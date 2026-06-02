@@ -1121,7 +1121,7 @@ function qa_html_convert_urls($html, $newwindow = false)
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
 	$uc = 'a-z\x{00a1}-\x{ffff}';
-	$url_regex = '#\b((?:https?|ftp)://(?:[0-9' . $uc . '][0-9' . $uc . '-]*\.)+[' . $uc . ']{2,}(?::\d{2,5})?(?:/(?:[^\s<>]*[^\s<>\.])?)?)#iu';
+	$url_regex = '#\b((?:https?|ftp)://(?:[0-9' . $uc . '][0-9' . $uc . '-]*\.)+[' . $uc . ']{2,}(?::\d{2,5})?(?:/(?:[^\s<>"\']*[^\s<>"\'.])?)?)#iu';
 
 	// get matches and their positions
 	if (preg_match_all($url_regex, $html, $matches, PREG_OFFSET_CAPTURE)) {
@@ -1153,7 +1153,8 @@ function qa_html_convert_urls($html, $newwindow = false)
 			}
 
 			$target = $newwindow ? ' target="_blank"' : '';
-			$replace = '<a href="' . $text_url . '" rel="nofollow"' . $target . '>' . $text_url . '</a>' . $removed;
+			$href = qa_html($text_url);
+			$replace = '<a href="' . $href . '" rel="nofollow"' . $target . '>' . $href . '</a>' . $removed;
 			$html = substr_replace($html, $replace, $match[1], strlen($match[0]));
 		}
 	}
