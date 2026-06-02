@@ -1837,17 +1837,97 @@ function qa_retrieve_url($url)
 {
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
-	// ensure we're fetching a remote URL
 	if (!preg_match('#^https?://#', $url)) {
 		return '';
 	}
 
-	$contents = file_get_contents($url) ?? '';
+	$host = parse_url($url, PHP_URL_HOST);
+	if (!$host) {
+		return '';
+	}
 
-	if (!strlen($contents) && function_exists('curl_exec')) { // try curl as a backup (if allow_url_fopen not set)
+	// strip brackets from IPv6 literal
+	if (strlen($host) > 2 && $host[0] === '[' && $host[strlen($host) - 1] === ']') {
+		$host = substr($host, 1, -1);
+	}
+
+	// resolve hostname to IPs
+	$ips = array();
+
+	if (filter_var($host, FILTER_VALIDATE_IP)) {
+		$ips[] = $host;
+	} else {
+		if (function_exists('dns_get_record')) {
+			$records = @dns_get_record($host, DNS_A + DNS_AAAA);
+			if (is_array($records)) {
+				foreach ($records as $r) {
+					if (isset($r['ip'])) $ips[] = $r['ip'];
+					if (isset($r['ipv6'])) $ips[] = $r['ipv6'];
+				}
+			}
+		}
+
+		if (empty($ips) && function_exists('gethostbyname')) {
+			$ip = @gethostbyname($host);
+			if ($ip !== $host && filter_var($ip, FILTER_VALIDATE_IP)) {
+				$ips[] = $ip;
+			}
+		}
+
+		if (empty($ips)) {
+			return '';
+		}
+	}
+
+	// block private / reserved IPs
+	foreach ($ips as $ip) {
+		if (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+			if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+				return '';
+			}
+		} elseif (filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+			if (!function_exists('inet_pton'))
+				return '';
+
+			$bin = @inet_pton($ip);
+			if ($bin === false || strlen($bin) !== 16)
+				return '';
+
+			// ::1 loopback, fc00::/7 (ULA), fe80::/10 (link-local), fec0::/10 (site-local)
+			if (
+				$bin === "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01"
+				|| (ord($bin[0]) & 0xfe) === 0xfc
+				|| (ord($bin[0]) === 0xfe && (ord($bin[1]) & 0x80) === 0x80)
+			) {
+				return '';
+			}
+
+			// ::ffff:0:0/96 (IPv4-mapped IPv6)
+			if (substr($bin, 0, 10) === "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00") {
+				$embedded = sprintf('%d.%d.%d.%d', ord($bin[12]), ord($bin[13]), ord($bin[14]), ord($bin[15]));
+				if (!filter_var($embedded, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE))
+					return '';
+			}
+		}
+	}
+
+	// fetch with limited redirects and timeouts (mitigates redirect-based SSRF)
+	$context = stream_context_create(array('http' => array(
+		'timeout' => 5,
+		'max_redirects' => 0,
+	)));
+	$contents = @file_get_contents($url, false, $context) ?? '';
+
+	if (!strlen($contents) && function_exists('curl_exec')) {
 		$curl = curl_init($url);
-		curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
+		curl_setopt_array($curl, array(
+			CURLOPT_RETURNTRANSFER => true,
+			CURLOPT_FOLLOWLOCATION => false,
+			CURLOPT_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+			CURLOPT_CONNECTTIMEOUT => 5,
+			CURLOPT_TIMEOUT => 5,
+		));
 		$contents = (string)curl_exec($curl);
 		curl_close($curl);
 	}

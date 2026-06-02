@@ -152,4 +152,81 @@ class BaseTest extends \PHPUnit\Framework\TestCase
 		$this->assertNull(qa_post_text('test_null'));
 		unset($_POST['test_null']);
 	}
+
+	public function test__qa_retrieve_url_rejects_non_http_schemes()
+	{
+		$this->assertSame('', qa_retrieve_url('file:///etc/passwd'));
+		$this->assertSame('', qa_retrieve_url('ftp://127.0.0.1/'));
+		$this->assertSame('', qa_retrieve_url(''));
+		$this->assertSame('', qa_retrieve_url('javascript:alert(1)'));
+	}
+
+	public function test__qa_retrieve_url_invalid_host_returns_empty()
+	{
+		$this->assertSame('', qa_retrieve_url('http:///path'));
+		$this->assertSame('', qa_retrieve_url('http://?query'));
+	}
+
+	public function test__qa_retrieve_url_blocks_loopback_v4()
+	{
+		$this->assertSame('', qa_retrieve_url('http://127.0.0.1:1/'));
+		$this->assertSame('', qa_retrieve_url('http://0.0.0.0:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_loopback_v6()
+	{
+		$this->assertSame('', qa_retrieve_url('http://[::1]:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_private_10()
+	{
+		$this->assertSame('', qa_retrieve_url('http://10.0.0.1:1/'));
+		$this->assertSame('', qa_retrieve_url('http://10.255.255.255:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_private_172()
+	{
+		$this->assertSame('', qa_retrieve_url('http://172.16.0.1:1/'));
+		$this->assertSame('', qa_retrieve_url('http://172.31.255.255:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_private_192()
+	{
+		$this->assertSame('', qa_retrieve_url('http://192.168.0.1:1/'));
+		$this->assertSame('', qa_retrieve_url('http://192.168.255.255:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_link_local()
+	{
+		$this->assertSame('', qa_retrieve_url('http://169.254.169.254:1/'));
+		$this->assertSame('', qa_retrieve_url('http://169.254.0.1:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_ula_v6()
+	{
+		$this->assertSame('', qa_retrieve_url('http://[fc00::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fd00::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fcff::1]:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_link_local_v6()
+	{
+		$this->assertSame('', qa_retrieve_url('http://[fe80::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fe90::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fea0::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[febf::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fec0::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fed0::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[fee0::1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[feff::1]:1/'));
+	}
+
+	public function test__qa_retrieve_url_blocks_ipv4_mapped_v6()
+	{
+		$this->assertSame('', qa_retrieve_url('http://[::ffff:127.0.0.1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[::ffff:10.0.0.1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[::ffff:192.168.1.1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[::ffff:172.16.0.1]:1/'));
+		$this->assertSame('', qa_retrieve_url('http://[::ffff:169.254.169.254]:1/'));
+	}
 }
