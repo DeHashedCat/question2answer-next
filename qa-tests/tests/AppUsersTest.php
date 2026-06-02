@@ -3,6 +3,22 @@ require_once QA_INCLUDE_DIR.'app/users.php';
 
 class AppUsersTest extends \PHPUnit\Framework\TestCase
 {
+	protected function tearDown(): void
+	{
+		if (session_status() === PHP_SESSION_ACTIVE) {
+			$_SESSION = array();
+			session_destroy();
+		}
+	}
+
+	public function test__qa_start_session_sets_httponly_and_strict_mode()
+	{
+		qa_start_session();
+
+		$this->assertSame('1', ini_get('session.cookie_httponly'));
+		$this->assertSame('1', ini_get('session.use_strict_mode'));
+	}
+
 	/**
 	 * Test logic of permissions function.
 	 * User level values: QA_USER_LEVEL_* in app/users.php [BASIC..SUPER]

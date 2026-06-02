@@ -712,6 +712,52 @@ function qa_block_words_replace($string, $wordspreg, $character = '*')
 
 
 /**
+ * Return $length bytes from a cryptographically secure random source.
+ * Falls back through the strongest available source on the platform.
+ * @param int $length
+ * @return string|false Binary string, or false on total failure
+ */
+function qa_random_bytes($length)
+{
+	if (function_exists('random_bytes')) {
+		try {
+			return random_bytes($length); // PHP 7.0+
+		} catch (Exception $e) { /* fall through */ }
+	}
+
+	if (function_exists('openssl_random_pseudo_bytes')) {
+		$strong = false;
+		$bytes = openssl_random_pseudo_bytes($length, $strong);
+		if ($strong && $bytes !== false) {
+			return $bytes; // PHP 5.3+
+		}
+	}
+
+	if (@is_readable('/dev/urandom')) {
+		$fp = @fopen('/dev/urandom', 'rb');
+		if ($fp) {
+			$bytes = '';
+			$read = 0;
+			while ($read < $length && !feof($fp)) {
+				$bytes .= fread($fp, $length - $read);
+				$read = strlen($bytes);
+			}
+			fclose($fp);
+			if (strlen($bytes) === $length) {
+				return $bytes;
+			}
+		}
+	}
+
+	if (function_exists('mcrypt_create_iv')) {
+		return mcrypt_create_iv($length, MCRYPT_DEV_URANDOM); // PHP 5.3-7.1
+	}
+
+	return false;
+}
+
+
+/**
  * Return a random alphanumeric string (base 36) of $length
  * @param $length
  * @return string
@@ -719,11 +765,24 @@ function qa_block_words_replace($string, $wordspreg, $character = '*')
 function qa_random_alphanum($length)
 {
 	$string = '';
+	$alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
 
-	while (strlen($string) < $length)
-		$string .= str_pad(base_convert(mt_rand(0, 46655), 10, 36), 3, '0', STR_PAD_LEFT);
+	if (function_exists('random_int')) {
+		while (strlen($string) < $length) {
+			$string .= $alphabet[random_int(0, 35)]; // PHP 7.0+, no bias
+		}
+	} else {
+		while (strlen($string) < $length) {
+			$byte = ord(qa_random_bytes(1));
+			// reject values >= 252 to avoid modulo bias (252 = 36*7)
+			while ($byte >= 252) {
+				$byte = ord(qa_random_bytes(1));
+			}
+			$string .= $alphabet[$byte % 36];
+		}
+	}
 
-	return substr($string, 0, $length);
+	return $string;
 }
 
 
