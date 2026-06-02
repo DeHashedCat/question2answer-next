@@ -241,7 +241,7 @@ class Q2A_Storage_FileCacheDriver implements Q2A_Storage_CacheDriver
 		$dirIter = new RecursiveDirectoryIterator($this->cacheDir);
 		foreach (new RecursiveIteratorIterator($dirIter) as $file) {
 			if (strpos($file->getFilename(), '.') === 0) {
-				// TODO: use FilesystemIterator::SKIP_DOTS once we're on minimum PHP 5.3
+				// skip hidden files (starting with dot)
 				continue;
 			}
 

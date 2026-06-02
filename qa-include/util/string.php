@@ -719,17 +719,15 @@ function qa_block_words_replace($string, $wordspreg, $character = '*')
  */
 function qa_random_bytes($length)
 {
-	if (function_exists('random_bytes')) {
-		try {
-			return random_bytes($length); // PHP 7.0+
-		} catch (Exception $e) { /* fall through */ }
-	}
+	try {
+		return random_bytes($length);
+	} catch (Exception $e) { /* fall through */ }
 
 	if (function_exists('openssl_random_pseudo_bytes')) {
 		$strong = false;
 		$bytes = openssl_random_pseudo_bytes($length, $strong);
 		if ($strong && $bytes !== false) {
-			return $bytes; // PHP 5.3+
+			return $bytes;
 		}
 	}
 
@@ -749,10 +747,6 @@ function qa_random_bytes($length)
 		}
 	}
 
-	if (function_exists('mcrypt_create_iv')) {
-		return mcrypt_create_iv($length, MCRYPT_DEV_URANDOM); // PHP 5.3-7.1
-	}
-
 	return false;
 }
 
@@ -767,19 +761,8 @@ function qa_random_alphanum($length)
 	$string = '';
 	$alphabet = '0123456789abcdefghijklmnopqrstuvwxyz';
 
-	if (function_exists('random_int')) {
-		while (strlen($string) < $length) {
-			$string .= $alphabet[random_int(0, 35)]; // PHP 7.0+, no bias
-		}
-	} else {
-		while (strlen($string) < $length) {
-			$byte = ord(qa_random_bytes(1));
-			// reject values >= 252 to avoid modulo bias (252 = 36*7)
-			while ($byte >= 252) {
-				$byte = ord(qa_random_bytes(1));
-			}
-			$string .= $alphabet[$byte % 36];
-		}
+	while (strlen($string) < $length) {
+		$string .= $alphabet[random_int(0, 35)];
 	}
 
 	return $string;

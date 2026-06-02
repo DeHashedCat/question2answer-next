@@ -127,38 +127,19 @@ function qa_php_version_below($version)
 // Initialization functions called above
 
 /**
- * Set up and verify the PHP environment for Q2A, including unregistering globals if necessary
+ * Set up and verify the PHP environment for Q2A
  */
 function qa_initialize_php()
 {
-	if (qa_php_version_below('5.1.6'))
-		qa_fatal_error('Q2A requires PHP 5.1.6 or later');
+	if (qa_php_version_below('8.2.0'))
+		qa_fatal_error('Q2A requires PHP 8.2.0 or later');
 
 	error_reporting(E_ALL); // be ultra-strict about error checking
-
-	@ini_set('magic_quotes_runtime', 0);
 
 	@setlocale(LC_CTYPE, 'C'); // prevent strtolower() et al affecting non-ASCII characters (appears important for IIS)
 
 	if (function_exists('date_default_timezone_set') && function_exists('date_default_timezone_get'))
 		@date_default_timezone_set(@date_default_timezone_get()); // prevent PHP notices where default timezone not set
-
-	if (ini_get('register_globals')) {
-		$checkarrays = array('_ENV', '_GET', '_POST', '_COOKIE', '_SERVER', '_FILES', '_REQUEST', '_SESSION'); // unregister globals if they're registered
-		$keyprotect = array_flip(array_merge($checkarrays, array('GLOBALS')));
-
-		foreach ($checkarrays as $checkarray) {
-			if (isset(${$checkarray}) && is_array(${$checkarray})) {
-				foreach (${$checkarray} as $checkkey => $checkvalue) {
-					if (isset($keyprotect[$checkkey])) {
-						qa_fatal_error('My superglobals are not for overriding');
-					} else {
-						unset($GLOBALS[$checkkey]);
-					}
-				}
-			}
-		}
-	}
 }
 
 
@@ -203,29 +184,7 @@ function qa_initialize_constants_1()
 		}
 	}
 
-	// Polyfills
-
-	// password_hash compatibility for 5.3-5.4
-	define('QA_PASSWORD_HASH', !qa_php_version_below('5.3.7'));
-	if (QA_PASSWORD_HASH) {
-		require_once QA_INCLUDE_DIR . 'vendor/password_compat.php';
-	}
-
-	// https://php.net/manual/en/function.hash-equals.php#115635
-	if (!function_exists('hash_equals')) {
-		function hash_equals($str1, $str2)
-		{
-			if (strlen((string)$str1) != strlen((string)$str2)) {
-				return false;
-			} else {
-				$res = $str1 ^ $str2;
-				$ret = 0;
-				for ($i = strlen($res) - 1; $i >= 0; $i--)
-					$ret |= ord($res[$i]);
-				return !$ret;
-			}
-		}
-	}
+	define('QA_PASSWORD_HASH', true);
 }
 
 
@@ -1163,7 +1122,7 @@ function qa_request_parts($start = 0)
 
 
 /**
- * Return string for incoming GET/POST/COOKIE value, stripping slashes if appropriate
+ * Return string for incoming GET/POST/COOKIE value
  * @param $string
  * @return mixed|string
  */
@@ -1171,16 +1130,12 @@ function qa_gpc_to_string($string)
 {
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
-	// get_magic_quotes_gpc always returns false from PHP 5.4; this avoids deprecation notice on PHP 7.4+
-	if (qa_php_version_below('5.4.0'))
-		return get_magic_quotes_gpc() ? stripslashes($string) : $string;
-	else
-		return $string;
+	return $string;
 }
 
 
 /**
- * Return string with slashes added, if appropriate for later removal by qa_gpc_to_string()
+ * Return string for later use by qa_gpc_to_string()
  * @param $string
  * @return mixed|string
  */
@@ -1188,11 +1143,7 @@ function qa_string_to_gpc($string)
 {
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
-	// get_magic_quotes_gpc always returns false from PHP 5.4; this avoids deprecation notice on PHP 7.4+
-	if (qa_php_version_below('5.4.0'))
-		return get_magic_quotes_gpc() ? addslashes($string) : $string;
-	else
-		return $string;
+	return $string;
 }
 
 
