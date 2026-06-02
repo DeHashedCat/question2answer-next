@@ -24,7 +24,7 @@ if (!defined('QA_VERSION')) { // don't allow this page to be requested directly 
 	exit;
 }
 
-define('QA_DB_VERSION_CURRENT', 67);
+define('QA_DB_VERSION_CURRENT', 68);
 
 
 /**
@@ -119,8 +119,8 @@ function qa_db_table_definitions()
 			'flags' => 'SMALLINT UNSIGNED NOT NULL DEFAULT 0', // see constants at top of /qa-include/app/users.php
 			'wallposts' => 'MEDIUMINT NOT NULL DEFAULT 0', // cached count of wall posts
 			'PRIMARY KEY (userid)',
-			'KEY email (email)',
-			'KEY handle (handle)',
+			'UNIQUE KEY unique_email (email)',
+			'UNIQUE KEY unique_handle (handle)',
 			'KEY level (level)',
 			'KEY created (created, level, flags)',
 		),
@@ -1600,7 +1600,48 @@ function qa_db_upgrade_tables()
 				qa_db_upgrade_query($locktablesquery);
 				break;
 
-			// Up to here: Version 1.8
+			case 68:
+				if (!QA_FINAL_EXTERNAL_USERS) {
+					$keyindexes = qa_array_to_keys(qa_db_read_all_assoc(
+						qa_db_query_sub('SHOW INDEX FROM ^users'), null, 'Key_name'
+					));
+
+					if (!isset($keyindexes['unique_email'])) {
+						$dupEmails = qa_db_read_all_assoc(qa_db_query_sub(
+							'SELECT email, COUNT(*) AS cnt FROM ^users GROUP BY email HAVING cnt > 1'
+						));
+						$dupHandles = qa_db_read_all_assoc(qa_db_query_sub(
+							'SELECT handle, COUNT(*) AS cnt FROM ^users GROUP BY handle HAVING cnt > 1'
+						));
+						$dupEmailCount = count($dupEmails);
+						$dupHandleCount = count($dupHandles);
+
+						if ($dupEmailCount > 0 || $dupHandleCount > 0) {
+							qa_fatal_error(
+								'Cannot add UNIQUE constraints to ^users table: ' .
+								$dupEmailCount . ' duplicate email value(s) and ' .
+								$dupHandleCount . ' duplicate handle value(s) found. ' .
+								'Resolve manually (e.g. by updating the duplicates to a unique value) ' .
+								'then re-run the upgrade.'
+							);
+						}
+
+						qa_db_upgrade_progress('Adding UNIQUE constraints to ^users table...');
+						qa_db_upgrade_query(
+							'ALTER TABLE ^users ' .
+							'DROP KEY email, DROP KEY handle, ' .
+							'ADD UNIQUE KEY unique_email (email), ' .
+							'ADD UNIQUE KEY unique_handle (handle)'
+						);
+						qa_db_upgrade_query($locktablesquery);
+					}
+				} else {
+					qa_db_upgrade_progress('Skipping ^users UNIQUE constraints (QA_FINAL_EXTERNAL_USERS).');
+				}
+				qa_db_upgrade_query($locktablesquery);
+				break;
+
+			// Up to here: Version 1.8.8
 		}
 
 		qa_db_set_db_version($newversion);
