@@ -443,11 +443,26 @@ function qa_db_insert_on_duplicate_inserted()
 
 /**
  * Return a random integer (as a string) for use in a BIGINT column.
- * Actual limit is 18,446,744,073,709,551,615 - we aim for 18,446,743,999,999,999,999.
+ * Actual limit is 18,446,744,073,709,551,615.
  */
 function qa_db_random_bigint()
 {
-	return sprintf('%d%06d%06d', mt_rand(1, 18446743), mt_rand(0, 999999), mt_rand(0, 999999));
+	require_once QA_INCLUDE_DIR . 'util/string.php';
+
+	$bytes = qa_random_bytes(8);
+	if ($bytes === false) {
+		// last-resort fallback on systems without any CSPRNG
+		$bytes = '';
+		for ($i = 0; $i < 8; $i++) {
+			$bytes .= chr(mt_rand(0, 255));
+		}
+	}
+
+	// split into two 32-bit unsigned halves for platform safety
+	$hi = unpack('N', substr($bytes, 0, 4))[1];
+	$lo = unpack('N', substr($bytes, 4, 4))[1];
+
+	return sprintf('%u', $hi) . str_pad(sprintf('%u', $lo), 10, '0', STR_PAD_LEFT);
 }
 
 
