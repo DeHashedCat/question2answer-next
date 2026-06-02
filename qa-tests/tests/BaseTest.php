@@ -72,4 +72,84 @@ class BaseTest extends \PHPUnit\Framework\TestCase
 		$this->assertSame($expected2, qa_q_request(5678, $title1));
 		$this->assertSame($expected3, qa_q_request(9000, $title2));
 	}
+
+	public function test__qa_get_normal()
+	{
+		$_GET['test_basic'] = 'hello';
+		$this->assertSame('hello', qa_get('test_basic'));
+		unset($_GET['test_basic']);
+	}
+
+	public function test__qa_get_missing()
+	{
+		$this->assertNull(qa_get('field_does_not_exist_123xyz'));
+	}
+
+	public function test__qa_get_array_returns_null()
+	{
+		$_GET['test_arr'] = array('a' => 'b', 'c' => 'd');
+		$this->assertNull(qa_get('test_arr'));
+		unset($_GET['test_arr']);
+	}
+
+	public function test__qa_get_integer_returns_null()
+	{
+		$_GET['test_int'] = 42;
+		$this->assertNull(qa_get('test_int'));
+		unset($_GET['test_int']);
+	}
+
+	public function test__qa_post_text_normal()
+	{
+		$_POST['test_basic'] = '  hello world  ';
+		$this->assertSame('hello world', qa_post_text('test_basic'));
+		unset($_POST['test_basic']);
+	}
+
+	public function test__qa_post_text_trim()
+	{
+		$_POST['test_trim'] = "\t\n test \n";
+		$this->assertSame('test', qa_post_text('test_trim'));
+		unset($_POST['test_trim']);
+	}
+
+	public function test__qa_post_text_newlines()
+	{
+		$_POST['test_nl'] = "line1\r\nline2\rline3";
+		$this->assertSame("line1\nline2\nline3", qa_post_text('test_nl'));
+		unset($_POST['test_nl']);
+	}
+
+	public function test__qa_post_text_empty()
+	{
+		$_POST['test_empty'] = '';
+		$this->assertSame('', qa_post_text('test_empty'));
+		unset($_POST['test_empty']);
+	}
+
+	public function test__qa_post_text_missing()
+	{
+		$this->assertNull(qa_post_text('field_does_not_exist_456abc'));
+	}
+
+	public function test__qa_post_text_array_returns_null()
+	{
+		$_POST['test_arr'] = array('foo', 'bar', 'baz');
+		$this->assertNull(qa_post_text('test_arr'));
+		unset($_POST['test_arr']);
+	}
+
+	public function test__qa_post_text_integer_returns_null()
+	{
+		$_POST['test_int'] = 42;
+		$this->assertNull(qa_post_text('test_int'));
+		unset($_POST['test_int']);
+	}
+
+	public function test__qa_post_text_null_returns_null()
+	{
+		$_POST['test_null'] = null;
+		$this->assertNull(qa_post_text('test_null'));
+		unset($_POST['test_null']);
+	}
 }

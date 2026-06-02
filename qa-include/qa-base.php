@@ -1197,29 +1197,37 @@ function qa_string_to_gpc($string)
 
 
 /**
- * Return string for incoming GET field, or null if it's not defined
+ * Return string for incoming GET field, or null if it's not defined or not a string.
  * @param $field
- * @return mixed|null|string
+ * @return string|null
  */
 function qa_get($field)
 {
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
-	return isset($_GET[$field]) ? qa_gpc_to_string($_GET[$field]) : null;
+	if (!isset($_GET[$field]) || !is_string($_GET[$field])) {
+		return null;
+	}
+
+	return qa_gpc_to_string($_GET[$field]);
 }
 
 
 /**
- * Return string for incoming POST field, or null if it's not defined.
+ * Return string for incoming POST field, or null if it's not defined or not a string.
  * While we're at it, trim() surrounding white space and converted to Unix line endings.
  * @param $field
- * @return mixed|null
+ * @return string|null
  */
 function qa_post_text($field)
 {
 	if (qa_to_override(__FUNCTION__)) { $args=func_get_args(); return qa_call_override(__FUNCTION__, $args); }
 
-	return isset($_POST[$field]) ? preg_replace('/\r\n?/', "\n", trim(qa_gpc_to_string($_POST[$field]))) : null;
+	if (!isset($_POST[$field]) || !is_string($_POST[$field])) {
+		return null;
+	}
+
+	return preg_replace('/\r\n?/', "\n", trim(qa_gpc_to_string($_POST[$field])));
 }
 
 /**
