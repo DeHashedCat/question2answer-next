@@ -138,8 +138,7 @@ function qa_initialize_php()
 
 	@setlocale(LC_CTYPE, 'C'); // prevent strtolower() et al affecting non-ASCII characters (appears important for IIS)
 
-	if (function_exists('date_default_timezone_set') && function_exists('date_default_timezone_get'))
-		@date_default_timezone_set(@date_default_timezone_get()); // prevent PHP notices where default timezone not set
+	@date_default_timezone_set(@date_default_timezone_get()); // prevent PHP notices where default timezone not set
 }
 
 
@@ -183,7 +182,6 @@ function qa_initialize_constants_1()
 			qa_fatal_error('Could not find configuration.php file for Joomla integration - please check QA_JOOMLA_INTEGRATE_PATH in qa-config.php');
 		}
 	}
-
 	define('QA_PASSWORD_HASH', true);
 }
 

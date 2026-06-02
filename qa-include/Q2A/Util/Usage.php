@@ -48,7 +48,7 @@ class Q2A_Util_Usage
 		$usage = array(
 			'files' => count(get_included_files()),
 			'queries' => $this->databaseUsage['queries'],
-			'ram' => function_exists('memory_get_usage') ? memory_get_usage() : 0,
+			'ram' => memory_get_usage(),
 			'clock' => array_sum(explode(' ', microtime())),
 			'mysql' => $this->databaseUsage['clock'],
 		);

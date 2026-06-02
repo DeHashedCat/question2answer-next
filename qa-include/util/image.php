@@ -45,12 +45,11 @@ function qa_has_gd_image()
  */
 function qa_image_file_too_big($imagefile, $size = null)
 {
-	if (function_exists('memory_get_usage')) {
-		$gotbytes = trim(ini_get('memory_limit') ?? '');
+	$gotbytes = trim(ini_get('memory_limit') ?? '');
 
-		$gotbytes = convert_to_bytes(substr($gotbytes, -1), $gotbytes);
+	$gotbytes = convert_to_bytes(substr($gotbytes, -1), $gotbytes);
 
-		if ($gotbytes > 0) { // otherwise we clearly don't know our limit
+	if ($gotbytes > 0) { // otherwise we clearly don't know our limit
 			$gotbytes = ($gotbytes - memory_get_usage()) * 0.9; // safety margin of 10%
 
 			$needbytes = filesize($imagefile); // memory to store file contents
@@ -72,7 +71,6 @@ function qa_image_file_too_big($imagefile, $size = null)
 			if ($needbytes > $gotbytes)
 				return sqrt($gotbytes / ($needbytes * 1.5)); // additional 50% safety margin since JPEG quality may change
 		}
-	}
 
 	return false;
 }
