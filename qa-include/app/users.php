@@ -157,6 +157,8 @@ if (QA_FINAL_EXTERNAL_USERS) {
 		@ini_set('session.gc_maxlifetime', 86400); // worth a try, but won't help in shared hosting environment
 		@ini_set('session.use_trans_sid', false); // sessions need cookies to work, since we redirect after login
 		@ini_set('session.cookie_domain', QA_COOKIE_DOMAIN);
+		@ini_set('session.cookie_httponly', 1);
+		@ini_set('session.use_strict_mode', 1);
 
 		if (!isset($_SESSION))
 			session_start();
@@ -274,6 +276,9 @@ if (QA_FINAL_EXTERNAL_USERS) {
 		qa_start_session();
 
 		if (isset($userid)) {
+			if (function_exists('session_regenerate_id'))
+				session_regenerate_id(true);
+
 			qa_set_session_user($userid, $source);
 
 			// PHP sessions time out too quickly on the server side, so we also set a cookie as backup.
@@ -307,6 +312,17 @@ if (QA_FINAL_EXTERNAL_USERS) {
 
 			qa_clear_session_cookie();
 			qa_clear_session_user();
+
+			if (function_exists('session_destroy')) {
+				$_SESSION = array();
+				session_destroy();
+
+				$params = session_get_cookie_params();
+				setcookie(session_name(), '', time() - 42000,
+					$params['path'], $params['domain'],
+					$params['secure'], $params['httponly']
+				);
+			}
 
 			qa_report_event('u_logout', $olduserid, $oldhandle, qa_cookie_get());
 		}
